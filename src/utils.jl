@@ -118,22 +118,22 @@ end
 Register a new effect type with the given symbol `s`.
 
 """
-function registerEffect(s::Symbol)
-    @eval begin
+macro registerEffect(s::Symbol)
+    return esc(:(begin
         struct $s <: Effect end
-    end
+    end))
 end
 
 """
-    registerEffects(s::Vector{Symbol})
+    registerEffects(symbols...)
 
-Register multiple effects by calling `registerEffect` on each element.
+Register multiple effects by calling `@registerEffect` on each element.
 
 """
-function registerEffects(s::Vector{Symbol})
-    for sym in s
-        registerEffect(sym)
-    end
+macro registerEffects(symbols...)
+    return esc(:(begin
+        $([:(@registerEffect $s) for s in symbols]...)
+    end))
 end
 
 
