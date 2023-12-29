@@ -2,11 +2,21 @@ using MacroTools
 using IRTools
 using DataStructures
 
+DEBUG = false
+
 function push!(stack::Stack, item)
+    global DEBUG
+    if DEBUG
+        println("pushing $item")
+    end
     DataStructures.push!(stack, item)
 end
 
 function pop!(stack::Stack)
+    global DEBUG
+    if DEBUG
+        println("popping $(first(stack))")
+    end
     DataStructures.pop!(stack)
 end
 
@@ -20,6 +30,18 @@ abstract type Action end
 struct Perform <: Action end
 struct Resend <: Action end
 
+"""
+    struct Wrap
+
+A struct representing a wrapped effect.
+
+# Fields
+- `type::Action`: The type of action associated with the effect.
+- `effect::DataType`: The effect data type.
+- `args::Vector`: The arguments for the effect.
+- `continuation::Union{Nothing,Task,Function}`: The continuation for the effect.
+
+"""
 struct Wrap
     type::Action
     effect::DataType
@@ -27,6 +49,15 @@ struct Wrap
     continuation::Union{Nothing,Task,Function}
 end
 
+"""
+    perform(e::Effect)
+
+Perform the given effect `e`.
+
+# Arguments
+- `e::Effect`: The effect to be performed.
+
+"""
 function perform(e::Effect)
     if hasfield(typeof(e), :args)
         args = [e.args]
@@ -36,6 +67,12 @@ function perform(e::Effect)
     return yield_parent(Wrap(Perform(), typeof(e), args, nothing))
 end
 
+"""
+    resend(e, args, t)
+
+Resends the effect `e` with the given `args` and `t` to the parent handler.
+Returns the result of the parent handler's handling of the effect.
+"""
 function resend(e, args, t)
     top = first(handler_stack)
     pop!(handler_stack)
@@ -48,14 +85,26 @@ function is_eff_obj(obj)
     return isa(obj, Wrap)
 end
 
+"""
+    yield_parent(args...)
+
+Yields control back to the parent task, passing optional arguments `args`.
+
+"""
 function yield_parent(args...)
     yieldto(parent_dict[current_task()], args...)
 end
 
-function yieldStack(args...)
+function yield_stack(args...)
     yieldto(first(handler_stack), args...)
 end
 
+"""
+    resume(t::Task, args...)
+
+Resume a suspended child task `t` with optional arguments `args`.
+
+"""
 function resume(t::Task, args...)
     curr = current_task()
     parent_dict[t] = curr
@@ -73,6 +122,15 @@ function resume(t::Task, args...)
     end
 end
 
+"""
+    handler(h::Dict{DataType,Function})
+
+Creates handler for given effects.
+Argument `h` is a dictionary mapping effect types to handler functions.
+Returns a function that takes a thunk and runs it with the given handler.
+If the returned function is called with no arguments, it returns the handler dictionary.
+
+"""
 function handler(h::Dict{DataType,Function})
     function tmp(th)
         curr_task = current_task()

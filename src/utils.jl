@@ -3,6 +3,13 @@ using IRTools
 using DataStructures
 using ReplMaker
 
+
+"""
+    effects_list(e)
+
+Recursively searches for instances of `Effect` subtypes in an expression `e`.
+
+"""
 function effects_list(e)
     list_of_effects = subtypes(Effect)
     if isa(e, Expr) && e.head == :call && e.args[1] == :perform
@@ -11,11 +18,20 @@ function effects_list(e)
             return [tp]
         end
     end
+    if isa(e, Expr)
+        return reduce(vcat, map(effects_list, e.args))
+    end
     return []
 end
 
 effects = Set{DataType}()
 
+"""
+    used_effects(a...)
+
+Compute the set of effects used by the given function.
+
+"""
 function used_effects(a...)
     global effects
     effects = Set{DataType}()
@@ -49,6 +65,15 @@ IRTools.@dynamo function infer_effects(a...)
     return ir
 end
 
+"""
+    handler_parse(s)
+
+Parse the given string `s` and perform automatic transformations on the parsed expression.
+The transformations include:
+- Replacing function calls to subtypes of `Effect` with a call to `perform`.
+- Creating a dictionary from the arguments of `handler` function calls.
+
+"""
 function handler_parse(s)
     e = Meta.parse(s)
     list_of_effects = subtypes(Effect) #list of DataTypes
@@ -71,6 +96,12 @@ function handler_parse(s)
     end
 end
 
+"""
+    start_handler_mode()
+
+Initialize mode with user friendly handler syntax.
+
+"""
 function start_handler_mode()
     initrepl(
         handler_parse,
@@ -82,18 +113,37 @@ function start_handler_mode()
     )
 end
 
+"""
+    registerEffect(s::Symbol)
+
+Register a new effect type with the given symbol `s`.
+
+"""
 function registerEffect(s::Symbol)
     @eval begin
         struct $s <: Effect end
     end
 end
 
+"""
+    registerEffects(s::Vector{Symbol})
+
+Register multiple effects by calling `registerEffect` on each element.
+
+"""
 function registerEffects(s::Vector{Symbol})
     for sym in s
         registerEffect(sym)
     end
 end
 
+
+"""
+    flattenHandlers(ds::Vector{Dict{DataType,Function}})
+
+Flattens a vector of dictionaries used to create handlers with disjoint effects into a single dictionary.
+
+"""
 function flattenHandlers(ds::Vector{Dict{DataType,Function}})
     res = Dict{Symbol,Function}()
     disjoint_sum = sum([length(d) for d in ds])
@@ -106,11 +156,25 @@ function flattenHandlers(ds::Vector{Dict{DataType,Function}})
     return res
 end
 
+
+"""
+    flattenHandlers(ds::Vector{Function})
+
+Flattens a vector of handlers with disjoint effects into a single handler.
+
+
+"""
 function flattenHandlers(ds::Vector{Function})
     tmp = map(d -> d(), ds)
-    return flattenHandlers(tmp)
+    return handler(flattenHandlers(tmp))
 end
 
+"""
+    handlerLike(old::Dict{DataType,Function}, new::Dict{DataType,Function})
+
+Creates new handler with effects from new overriding effects from old.
+
+"""
 function handlerLike(old::Dict{DataType,Function}, new::Dict{DataType,Function})
     res = Dict{DataType,Function}()
     for (k, v) in old
@@ -122,6 +186,12 @@ function handlerLike(old::Dict{DataType,Function}, new::Dict{DataType,Function})
     return res
 end
 
+"""
+    handlerLike(old::Dict{DataType,Function}, new::Function)
+
+Creates new handler with effects from new overriding effects from old.
+    
+"""
 function handlerLike(old::Dict{DataType,Function}, new::Function)
     res = Dict{DataType,Function}()
     for (k, v) in old
@@ -131,5 +201,5 @@ function handlerLike(old::Dict{DataType,Function}, new::Function)
     for (k, v) in new
         res[k] = v
     end
-    return res
+    return handler(res)
 end
