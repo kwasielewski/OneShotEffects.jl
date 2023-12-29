@@ -24,7 +24,7 @@ handler_stack = Stack{Task}()
 parent_dict = Dict{Task,Task}()
 
 abstract type Effect end
-struct Val <: Effect end
+struct Value <: Effect end
 
 abstract type Action end
 struct Perform <: Action end
@@ -151,7 +151,7 @@ function handler(h::Dict{DataType,Function})
         rehandle = k -> begin
             (args...) -> begin
                 newh = copy(h)
-                newh[Val] = cont
+                newh[Value] = cont
 
                 return handler(newh)(() -> k(args...))
             end
@@ -165,7 +165,7 @@ function handler(h::Dict{DataType,Function})
                 if !isa(r, Vector)
                     r = [r]
                 end
-                res = h[Val](r...)
+                res = h[Value](r...)
                 return res
             end
 

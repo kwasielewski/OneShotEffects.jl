@@ -2,6 +2,7 @@ using MacroTools
 using IRTools
 using DataStructures
 using ReplMaker
+using InteractiveUtils
 
 
 """
@@ -24,7 +25,7 @@ function effects_list(e)
     return []
 end
 
-effects = Set{DataType}()
+effects = Ref{Set{DataType}}()
 
 """
     used_effects(a...)
@@ -45,14 +46,13 @@ IRTools.@dynamo function infer_effects(a...)
     ir = IRTools.IR(a...)
     isnothing(ir) && return # base case
     list_of_effects = subtypes(Effect) #list of DataTypes
-
     for (x, st) in ir
         IRTools.isexpr(st.expr, :call) || begin
             ir[x] = :(1.0 + 1.0)
             continue
         end
         if st.expr.head == :call && st.expr.args[1] == GlobalRef(Main, :perform)
-            effect = getfield(@__MODULE__, ir[st.expr.args[2]].expr.args[2].name)
+            effect = getglobal(Main, ir[st.expr.args[2]].expr.args[2].name)
             if effect in list_of_effects
                 DataStructures.push!(effects, effect)
             end
@@ -61,7 +61,6 @@ IRTools.@dynamo function infer_effects(a...)
             ir[x] = IRTools.xcall(infer_effects, st.expr.args...)
         end
     end
-
     return ir
 end
 
@@ -161,7 +160,6 @@ end
     flattenHandlers(ds::Vector{Function})
 
 Flattens a vector of handlers with disjoint effects into a single handler.
-
 
 """
 function flattenHandlers(ds::Vector{Function})
