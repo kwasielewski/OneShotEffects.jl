@@ -2,3 +2,9 @@ name = "OneShotEffects"
 uuid = "ba00cce6-c464-4cdb-86b6-bef9517de5e6"
 authors = ["Krzysztof Wasielewski <krzychuwas@gmail.com>"]
 version = "0.1.0"
+
+[deps]
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+IRTools = "7869d1d1-7146-5819-86e3-90919afe41df"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+ReplMaker = "b873ce64-0db9-51f5-a568-4457d8e49576"
