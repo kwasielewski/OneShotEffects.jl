@@ -178,7 +178,7 @@ function handler(h::Dict{DataType,Function})
                 effh = h[r.effect]
                 return effh(rehandle(r.continuation), r.args...)
             elseif isa(r.type, Resend)
-                return resend(r.eff, r.args, rehandle(r.continuation))
+                return resend(r.effect, r.args, rehandle(r.continuation))
             else
                 error("unreachable")
             end
