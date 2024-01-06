@@ -1,6 +1,5 @@
 using MacroTools
 using IRTools
-using DataStructures
 using ReplMaker
 using InteractiveUtils
 
@@ -25,8 +24,6 @@ function effects_list(e)
     return []
 end
 
-effects = Ref{Set{DataType}}()
-
 """
     used_effects(a...)
 
@@ -34,18 +31,24 @@ Compute the set of effects used by the given function.
 
 """
 function used_effects(a...)
-    global effects
-    effects = Set{DataType}()
+    retval = infer_effects(a...)
+    return collect(retval)
+end
 
-    infer_effects(a...)
-    return collect(effects)
+function unionSet!(s, x)
+    if x isa Set
+        union!(s, x)
+    else
+        s
+    end
 end
 
 IRTools.@dynamo function infer_effects(a...)
-    global effects
     ir = IRTools.IR(a...)
-    isnothing(ir) && return # base case
+    isnothing(ir) && return
     list_of_effects = subtypes(Effect) #list of DataTypes
+    list_of_used_effects = []
+    list_of_ids = []
     for (x, st) in ir
         IRTools.isexpr(st.expr, :call) || begin
             ir[x] = :(1.0 + 1.0)
@@ -54,13 +57,24 @@ IRTools.@dynamo function infer_effects(a...)
         if st.expr.head == :call && st.expr.args[1] == GlobalRef(Main, :perform)
             effect = getglobal(Main, ir[st.expr.args[2]].expr.args[2].name)
             if effect in list_of_effects
-                DataStructures.push!(effects, effect)
+                Base.push!(list_of_used_effects, effect)
             end
             ir[x] = :(2 + 2)
         else
             ir[x] = IRTools.xcall(infer_effects, st.expr.args...)
+            Base.push!(list_of_ids, x)
         end
     end
+    effects_set = IRTools.push!(ir, IRTools.xcall(Core, :apply_type, Main.Set, Main.DataType))
+    effects_set = IRTools.push!(ir, IRTools.xcall(effects_set))
+    last_id = effects_set
+    for i in 1:length(list_of_used_effects)
+        last_id = IRTools.push!(ir, IRTools.xcall(:push!, effects_set, list_of_used_effects[i]))
+    end
+    for i in 1:length(list_of_ids)
+        last_id = IRTools.push!(ir, IRTools.xcall(OneShotEffects, :unionSet!, effects_set, list_of_ids[i]))
+    end
+    IRTools.return!(ir, last_id)
     return ir
 end
 

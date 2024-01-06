@@ -79,6 +79,7 @@ function used_multiple_effects_test()
         perform(Read())
     end
     function g()
+        perform(Write("abc"))
         f()
     end
     return Set(used_effects(g))
@@ -136,7 +137,7 @@ end
     @test double_print_test() == "Hello world hello world!?"
     @test escaping_effect_test() == "cba"
     @test used_effects_test() == [Get]
-    @test used_multiple_effects_test() == Set([Get, Read])
+    @test Set(used_multiple_effects_test()) == Set([Get, Read, Write])
     @test state_test() == 9
     @test exception_test() == 5
     @test resending_resended_test() == 42
