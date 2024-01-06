@@ -114,6 +114,24 @@ function exception_test()
 
 end
 
+function resending_resended_test()
+    dummyh = handler(Dict(
+        Value => (v -> v),
+        Read => (k -> k(52))
+    ))
+    toph = handler(Dict(
+        Value => (v -> v),
+        Get => (k -> k(42))
+    ))
+    retval = toph(() -> begin
+                dummyh(() -> begin
+                dummyh(() -> begin
+                    x = perform(Get())
+                    x
+            end) end) end)
+    return retval
+end
+
 @testset "OneShotEffects" begin
     @test double_print_test() == "Hello world hello world!?"
     @test escaping_effect_test() == "cba"
@@ -121,4 +139,5 @@ end
     @test used_multiple_effects_test() == Set([Get, Read])
     @test state_test() == 9
     @test exception_test() == 5
+    @test resending_resended_test() == 42
 end
