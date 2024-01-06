@@ -73,6 +73,17 @@ function used_effects_test()
     return used_effects(g)
 end
 
+function used_multiple_effects_test()
+    function f()
+        perform(Get())
+        perform(Read())
+    end
+    function g()
+        f()
+    end
+    return Set(used_effects(g))
+end
+
 function state_test()
     stateh = handler(Dict(
         Value => (v -> (x->x)),
@@ -107,6 +118,7 @@ end
     @test double_print_test() == "Hello world hello world!?"
     @test escaping_effect_test() == "cba"
     @test used_effects_test() == [Get]
+    @test used_multiple_effects_test() == Set([Get, Read])
     @test state_test() == 9
     @test exception_test() == 5
 end
