@@ -1,6 +1,7 @@
 module OneShotEffects
 
-export Effect, perform, handler, used_effects, Value, @registerEffect, @registerEffects
+export Effect, perform, handler, used_effects, Value
+export @registerEffect, @registerEffects, @registerEffectWithArgs
 
 include("effects.jl")
 include("utils.jl")

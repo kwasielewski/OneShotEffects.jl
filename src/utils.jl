@@ -116,11 +116,27 @@ end
     registerEffect(s::Symbol)
 
 Register a new effect type with the given symbol `s`.
+Registered effect has no arguments.
 
 """
 macro registerEffect(s::Symbol)
     return esc(:(begin
         struct $s <: Effect end
+    end))
+end
+
+"""
+    macro registerEffectWithArgs(s::Symbol)
+
+Register a new effect type with the given symbol `s`.
+Registered effect has arguments.
+
+"""
+macro registerEffectWithArgs(s::Symbol)
+    return esc(:(begin
+        struct $s <: Effect 
+            args::Any
+        end
     end))
 end
 
