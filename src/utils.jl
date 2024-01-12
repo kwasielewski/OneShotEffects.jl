@@ -91,22 +91,46 @@ function handler_parse(s)
     e = Meta.parse(s)
     list_of_effects = subtypes(Effect) #list of DataTypes
     #automatic perform
-    MacroTools.postwalk(e) do x
-        if x isa Expr &&
-           x.head == :call &&
-           getfield(@__MODULE__, x.args[1]) in list_of_effects
-            x.args[1] = Expr(:call, :perform, x.args[1])
+    function insert_perform(e)
+        if e isa Expr && e.head == :call && e.args[1] == :handler
+            return e
         end
-        return x
+        if e isa Expr
+            for i in 1:length(e.args)
+                if e.args[i] isa Expr
+                    e.args[i] = insert_perform(e.args[i])
+                end
+            end
+        end
+        if e isa Expr && e.head == :call
+            try
+                tp = getfield(Main, e.args[1])
+                if tp in list_of_effects
+                    return Expr(:call, :perform, e)
+                end
+            catch err
+                return e
+            end
+        end
+        return e
     end
-
+    e = insert_perform(e)
     #automatic Dict creation
-    MacroTools.postwalk(e) do x
-        if x isa Expr && x.head == :call && x.args[1] == :handler
-            x.args[2] = Expr(:call, :Dict, x.args[2].args...)
+    function insert_dict(e)
+        if e isa Expr
+            for i in 1:length(e.args)
+                if e.args[i] isa Expr
+                    e.args[i] = insert_dict(e.args[i])
+                end
+            end
         end
-        return x
+        if e isa Expr && e.head == :call && e.args[1] == :handler
+            e.args[2] = Expr(:call, :Dict, e.args[2:end]...)
+            deleteat!(e.args, 3:length(e.args))
+        end
+        return e
     end
+    e = insert_dict(e)
 end
 
 """
